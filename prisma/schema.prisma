@@ -22,7 +22,8 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  attendances  Attendance[]
+  attendances         Attendance[]
+  attendanceLocations AttendanceLocation[]
 }
 
 model Attendance {
@@ -43,4 +44,23 @@ model Attendance {
   updatedAt       DateTime  @updatedAt
 
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AttendanceLocation {
+  id               Int       @id @default(autoincrement())
+  clientLocationId String    @unique
+
+  sessionEventId   String
+  userId           Int
+
+  latitude         Float
+  longitude        Float
+
+  capturedAt       DateTime  @db.Timestamp(3)
+  createdAt        DateTime  @default(now())
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionEventId, capturedAt])
+  @@index([userId, capturedAt])
 }

@@ -10,19 +10,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { SyncAttendanceDto } from './dto/sync-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
-
+import { SyncLocationDto } from "./dto/sync-location.dto";
 @Injectable()
 export class AttendanceService {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   // =========================================================
   // CREATE - NORMAL ONLINE PUNCH IN
   // =========================================================
-  async create(
-    createAttendanceDto: CreateAttendanceDto,
-  ) {
+  async create(createAttendanceDto: CreateAttendanceDto) {
     const user = await this.prisma.user.findUnique({
       where: {
         id: createAttendanceDto.userId,
@@ -70,20 +66,17 @@ export class AttendanceService {
   // READ ONE
   // =========================================================
   async findOne(id: number) {
-    const attendance =
-      await this.prisma.attendance.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          user: true,
-        },
-      });
+    const attendance = await this.prisma.attendance.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        user: true,
+      },
+    });
 
     if (!attendance) {
-      throw new NotFoundException(
-        `Attendance with ID ${id} not found`,
-      );
+      throw new NotFoundException(`Attendance with ID ${id} not found`);
     }
 
     return attendance;
@@ -100,9 +93,7 @@ export class AttendanceService {
     });
 
     if (!user) {
-      throw new NotFoundException(
-        `User with ID ${userId} not found`,
-      );
+      throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
     return this.prisma.attendance.findMany({
@@ -121,10 +112,7 @@ export class AttendanceService {
   // =========================================================
   // UPDATE - NORMAL ONLINE PUNCH OUT
   // =========================================================
-  async update(
-    id: number,
-    updateAttendanceDto: UpdateAttendanceDto,
-  ) {
+  async update(id: number, updateAttendanceDto: UpdateAttendanceDto) {
     await this.findOne(id);
 
     if (updateAttendanceDto.userId !== undefined) {
@@ -210,35 +198,30 @@ export class AttendanceService {
       });
 
       if (!user) {
-        throw new NotFoundException(
-          `User with ID ${dto.userId} not found`,
-        );
+        throw new NotFoundException(`User with ID ${dto.userId} not found`);
       }
 
       // Convert the mobile's stored wall-clock IST
       // into a Date value suitable for timestamp without time zone.
-      const punchTime = this.wallClockToDate(
-        dto.punchTime,
-      );
+      const punchTime = this.wallClockToDate(dto.punchTime);
 
-      const attendance =
-        await this.prisma.attendance.create({
-          data: {
-            userId: dto.userId,
-            latitude: dto.latitude,
-            longitude: dto.longitude,
+      const attendance = await this.prisma.attendance.create({
+        data: {
+          userId: dto.userId,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
 
-            // Original time when employee actually punched
-            inPunch: punchTime,
+          // Original time when employee actually punched
+          inPunch: punchTime,
 
-            // Unique mobile event ID
-            inClientEventId: dto.clientEventId,
-          },
+          // Unique mobile event ID
+          inClientEventId: dto.clientEventId,
+        },
 
-          include: {
-            user: true,
-          },
-        });
+        include: {
+          user: true,
+        },
+      });
 
       return {
         success: true,
@@ -258,15 +241,14 @@ export class AttendanceService {
     }
 
     // Check whether this Punch Out was already synchronized
-    const existingOut =
-      await this.prisma.attendance.findFirst({
-        where: {
-          outClientEventId: dto.clientEventId,
-        },
-        include: {
-          user: true,
-        },
-      });
+    const existingOut = await this.prisma.attendance.findFirst({
+      where: {
+        outClientEventId: dto.clientEventId,
+      },
+      include: {
+        user: true,
+      },
+    });
 
     if (existingOut) {
       return {
@@ -278,16 +260,15 @@ export class AttendanceService {
 
     // Find the server attendance record created
     // from the corresponding Punch In event.
-    const attendance =
-      await this.prisma.attendance.findFirst({
-        where: {
-          inClientEventId: dto.referenceEventId,
-          userId: dto.userId,
-        },
-        include: {
-          user: true,
-        },
-      });
+    const attendance = await this.prisma.attendance.findFirst({
+      where: {
+        inClientEventId: dto.referenceEventId,
+        userId: dto.userId,
+      },
+      include: {
+        user: true,
+      },
+    });
 
     if (!attendance) {
       throw new NotFoundException(
@@ -303,29 +284,26 @@ export class AttendanceService {
       );
     }
 
-    const punchTime = this.wallClockToDate(
-      dto.punchTime,
-    );
+    const punchTime = this.wallClockToDate(dto.punchTime);
 
-    const updated =
-      await this.prisma.attendance.update({
-        where: {
-          id: attendance.id,
-        },
+    const updated = await this.prisma.attendance.update({
+      where: {
+        id: attendance.id,
+      },
 
-        data: {
-          outPunch: punchTime,
-          outClientEventId: dto.clientEventId,
+      data: {
+        outPunch: punchTime,
+        outClientEventId: dto.clientEventId,
 
-          // Store the latest location received with Punch Out
-          latitude: dto.latitude,
-          longitude: dto.longitude,
-        },
+        // Store the latest location received with Punch Out
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+      },
 
-        include: {
-          user: true,
-        },
-      });
+      include: {
+        user: true,
+      },
+    });
 
     return {
       success: true,
@@ -339,8 +317,49 @@ export class AttendanceService {
   // TO DATE FOR PostgreSQL timestamp WITHOUT TIME ZONE
   // =========================================================
   private wallClockToDate(value: string): Date {
-    return new Date(
-      value.replace(' ', 'T') + 'Z',
-    );
+    return new Date(value.replace(' ', 'T') + 'Z');
+  }
+
+  async syncLocation(dto: SyncLocationDto) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: dto.userId,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${dto.userId} not found.`);
+    }
+
+    const existing = await this.prisma.attendanceLocation.findUnique({
+      where: {
+        clientLocationId: dto.clientLocationId,
+      },
+    });
+
+    if (existing) {
+      return {
+        success: true,
+        duplicated: true,
+        location: existing,
+      };
+    }
+
+    const location = await this.prisma.attendanceLocation.create({
+      data: {
+        clientLocationId: dto.clientLocationId,
+        sessionEventId: dto.sessionEventId,
+        userId: dto.userId,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        capturedAt: this.wallClockToDate(dto.capturedAt),
+      },
+    });
+
+    return {
+      success: true,
+      duplicated: false,
+      location,
+    };
   }
 }

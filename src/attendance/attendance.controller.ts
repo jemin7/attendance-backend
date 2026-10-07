@@ -13,17 +13,14 @@ import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { SyncAttendanceDto } from './dto/sync-attendance.dto';
+import { SyncLocationDto } from './dto/sync-location.dto';
 
 @Controller('attendance')
 export class AttendanceController {
-  constructor(
-    private readonly attendanceService: AttendanceService,
-  ) {}
+  constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post()
-  create(
-    @Body() createAttendanceDto: CreateAttendanceDto,
-  ) {
+  create(@Body() createAttendanceDto: CreateAttendanceDto) {
     return this.attendanceService.create(createAttendanceDto);
   }
 
@@ -33,16 +30,12 @@ export class AttendanceController {
   }
 
   @Get('user/:userId')
-  findByUser(
-    @Param('userId', ParseIntPipe) userId: number,
-  ) {
+  findByUser(@Param('userId', ParseIntPipe) userId: number) {
     return this.attendanceService.findByUser(userId);
   }
 
   @Get(':id')
-  findOne(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.attendanceService.findOne(id);
   }
 
@@ -51,21 +44,21 @@ export class AttendanceController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateAttendanceDto: UpdateAttendanceDto,
   ) {
-    return this.attendanceService.update(
-      id,
-      updateAttendanceDto,
-    );
+    return this.attendanceService.update(id, updateAttendanceDto);
   }
 
   @Delete(':id')
-  remove(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.attendanceService.remove(id);
   }
 
   @Post('sync')
-syncAttendance(@Body() dto: SyncAttendanceDto) {
-  return this.attendanceService.syncAttendance(dto);
-}
+  syncAttendance(@Body() dto: SyncAttendanceDto) {
+    return this.attendanceService.syncAttendance(dto);
+  }
+
+  @Post('location/sync')
+  syncLocation(@Body() dto: SyncLocationDto) {
+    return this.attendanceService.syncLocation(dto);
+  }
 }
